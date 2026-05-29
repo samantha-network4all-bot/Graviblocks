@@ -10,12 +10,6 @@ final class AppController {
         registerRoutes()
         menuBuilder.build()
         windowController.showWindow()
-        DispatchQueue.main.async {
-            if let win = self.windowController.windowController?.window {
-                let root = RootView(frame: NSRect(origin: .zero, size: Metrics.defaultWindowSize))
-                win.contentView = root
-            }
-        }
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
 
@@ -27,21 +21,42 @@ final class AppController {
         }
 
         router.post(path: "/shutdown") { _ in
-            DispatchQueue.main.async {
+            DispatchQueue.main.sync {
                 NSApplication.shared.terminate(nil)
             }
             return .ok(jsonString: "{\"ok\":true}")
         }
 
         router.get(path: "/screenshot") { _ in
-            guard let win = NSApplication.shared.keyWindow ?? NSApplication.shared.windows.first else {
-                return .internalServerError("no key window")
+            var pngData: Data?
+            var errMsg: String?
+            DispatchQueue.main.sync {
+                guard let win = NSApplication.shared.keyWindow ?? NSApplication.shared.windows.first else {
+                    errMsg = "no key window"
+                    return
+                }
+                guard let view = win.contentView else {
+                    errMsg = "no content view"
+                    return
+                }
+                guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
+                    errMsg = "bitmapImageRep failed"
+                    return
+                }
+                view.cacheDisplay(in: view.bounds, to: rep)
+                if let data = rep.representation(using: .png, properties: [:]) {
+                    pngData = data
+                } else {
+                    errMsg = "png encoding failed"
+                }
             }
-            let view = win.contentView!
-            let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)!
-            view.cacheDisplay(in: view.bounds, to: rep)
-            let png = rep.representation(using: .png, properties: [:])!
-            return .ok(data: png, contentType: "image/png")
+            if let err = errMsg {
+                return .internalServerError(err)
+            }
+            guard let data = pngData else {
+                return .internalServerError("no data")
+            }
+            return .ok(data: data, contentType: "image/png")
         }
     }
 }

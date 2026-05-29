@@ -16,16 +16,25 @@ final class TestAPIServer {
             return
         }
 
+        listener?.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .ready:
+                if let port = self?.listener?.port {
+                    self?.writePortFile(port: port)
+                }
+            case .failed(let err):
+                self?.listener?.cancel()
+                _ = err
+            default:
+                break
+            }
+        }
+
         listener?.newConnectionHandler = { [weak self] conn in
             self?.handleConnection(conn)
         }
 
         listener?.start(queue: DispatchQueue(label: "test-api"))
-
-        // Write port to support file
-        if let port = listener?.port {
-            writePortFile(port: port)
-        }
     }
 
     private func writePortFile(port: NWEndpoint.Port) {

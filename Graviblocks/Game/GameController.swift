@@ -7,6 +7,9 @@ final class GameController: NSViewController, TestAPIControllerRoutes {
 
     override init(nibName: String?, bundle: Bundle?) {
         super.init(nibName: nibName, bundle: bundle)
+        // Force view load so routes register even if controller is not
+        // placed in the window's view hierarchy yet.
+        _ = self.view
     }
     required init?(coder: NSCoder) { fatalError() }
 

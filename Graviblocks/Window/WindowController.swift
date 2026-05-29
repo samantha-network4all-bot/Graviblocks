@@ -3,17 +3,12 @@ import AppKit
 final class WindowController: NSViewController, TestAPIControllerRoutes {
     static var routePrefix: String { "window" }
 
-    private(set) var windowController: NSWindowController?
-
     func showWindow() {
-        DispatchQueue.main.sync {
-            let win = GraviblocksWindow()
-            let wc = NSWindowController(window: win)
-            self.windowController = wc
-            wc.contentViewController = self
-            wc.showWindow(nil)
-            win.makeKeyAndOrderFront(nil)
-        }
+        let win = GraviblocksWindow()
+        let wc = NSWindowController(window: win)
+        wc.contentViewController = self
+        wc.showWindow(nil)
+        win.makeKeyAndOrderFront(nil)
     }
 
     override func loadView() {
@@ -28,7 +23,7 @@ final class WindowController: NSViewController, TestAPIControllerRoutes {
 
     func registerRoutes(on router: TestAPIRouter) {
         router.get(prefix: Self.routePrefix, path: "/list") { [weak self] _ in
-            guard let self else { return .notFound() }
+            guard self != nil else { return .notFound() }
             let windowList: [[String: Any]] = [
                 ["id": "w1", "title": "Graviblocks", "isKey": true]
             ]
