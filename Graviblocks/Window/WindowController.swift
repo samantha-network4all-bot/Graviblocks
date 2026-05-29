@@ -24,10 +24,10 @@ final class WindowController: NSViewController, TestAPIControllerRoutes {
     func registerRoutes(on router: TestAPIRouter) {
         router.get(prefix: Self.routePrefix, path: "/list") { [weak self] _ in
             guard self != nil else { return .notFound() }
-            let windowList: [[String: Any]] = [
-                ["id": "w1", "title": "Graviblocks", "isKey": true]
+            let windowInfo: [String: Any] = [
+                "id": "w1", "title": "Graviblocks", "isKey": true
             ]
-            guard let data = try? JSONSerialization.data(withJSONObject: windowList) else {
+            guard let data = try? JSONSerialization.data(withJSONObject: windowInfo) else {
                 return .internalServerError("encoding failed")
             }
             return .ok(json: data)
