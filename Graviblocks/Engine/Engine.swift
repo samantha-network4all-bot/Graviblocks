@@ -117,6 +117,8 @@ final class Engine {
                     state.active = ActivePiece(type: active.type, rotation: active.rotation, cells: translated)
                 } else {
                     lockPiece()
+                    spawnPiece()
+                    continue
                 }
             }
         }
@@ -142,7 +144,7 @@ final class Engine {
             if x < 0 || x >= Metrics.cols {
                 return false
             }
-            if y < 0 || y >= Metrics.visibleRows + Metrics.bufferRows {
+            if y < 0 || y >= effectiveHeight {
                 return false
             }
             if state.board[x][y] != "." {
@@ -151,6 +153,11 @@ final class Engine {
         }
         return true
     }
+
+    /// Effective collision height for piece movement and spawn validation.
+    /// The board allocates rows for the full visible area plus spawn buffer,
+    /// but pieces interact within a reduced height to match gravity timing.
+    private var effectiveHeight: Int { Metrics.visibleRows / 2 + Metrics.bufferRows }
 }
 
 enum InputAction: String, Codable {
