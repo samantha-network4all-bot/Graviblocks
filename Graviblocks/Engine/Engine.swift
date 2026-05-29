@@ -3,6 +3,7 @@ import Foundation
 final class Engine {
     var state: GameState
     private var bag: Bag!
+    private var gravityCounter: Int = 0
 
     init() {
         self.state = GameState()
@@ -19,6 +20,7 @@ final class Engine {
         )
         var rng = PRNG(seed: seed)
         bag = Bag(rng: &rng)
+        gravityCounter = 0
         fillNextQueue()
         spawnPiece()
     }
@@ -64,28 +66,90 @@ final class Engine {
         let cells = rotationCells.map { (x: $0.0 + spawnX, y: $0.1 + spawnY) }
 
         // Check for top-out (overlap with filled cells)
-        for cell in cells {
-            if cell.x >= 0 && cell.x < Metrics.cols && cell.y >= 0 && cell.y < Metrics.visibleRows + Metrics.bufferRows {
-                if state.board[cell.x][cell.y] != "." {
-                    state.phase = .over
-                    state.topOut = true
-                    return
-                }
-            }
+        if !isValid(cells: cells.map { [$0.x, $0.y] }) {
+            state.phase = .over
+            state.topOut = true
+            return
         }
 
         state.active = ActivePiece(type: String(pieceChar), rotation: 0, cells: cells.map { [$0.x, $0.y] })
         state.canHold = true
+        gravityCounter = 0
     }
 
     func apply(action: InputAction) {
-        // Stub for now - movement/rotation comes in later slices
+        guard state.phase == .playing, var active = state.active else { return }
+
+        switch action {
+        case .left, .right:
+            let dx = action == .left ? -1 : 1
+            let dy = 0
+            let translated = active.cells.map { [$0[0] + dx, $0[1] + dy] }
+            if isValid(cells: translated) {
+                state.active = ActivePiece(type: active.type, rotation: active.rotation, cells: translated)
+            }
+        default:
+            break
+        }
     }
 
     func tick(n: Int = 1) {
-        state.tick += n
-        state.elapsedTicks += n
-        // Gravity stub - comes in S3
+        for _ in 0..<n {
+            state.tick += 1
+            state.elapsedTicks += 1
+
+            if state.phase != .playing {
+                break
+            }
+
+            if state.active == nil {
+                spawnPiece()
+                continue
+            }
+
+            let g = state.mode == .sprint ? Timing.sprintGravity : Timing.gravity(for: state.level)
+            gravityCounter += 1
+            if gravityCounter >= g {
+                gravityCounter = 0
+                guard var active = state.active else { continue }
+                let translated = active.cells.map { [$0[0], $0[1] + 1] }
+                if isValid(cells: translated) {
+                    state.active = ActivePiece(type: active.type, rotation: active.rotation, cells: translated)
+                } else {
+                    lockPiece()
+                }
+            }
+        }
+    }
+
+    private func lockPiece() {
+        guard let active = state.active else { return }
+        for cell in active.cells {
+            let x = cell[0], y = cell[1]
+            if x >= 0 && x < Metrics.cols && y >= 0 && y < Metrics.visibleRows + Metrics.bufferRows {
+                state.board[x][y] = active.type
+            }
+        }
+        state.active = nil
+        gravityCounter = 0
+        state.lockTimer = 0
+        state.lockResets = 0
+    }
+
+    private func isValid(cells: [[Int]]) -> Bool {
+        for cell in cells {
+            let x = cell[0], y = cell[1]
+            if x < 0 || x >= Metrics.cols {
+                return false
+            }
+            if y < 0 || y >= Metrics.visibleRows + Metrics.bufferRows {
+                return false
+            }
+            if state.board[x][y] != "." {
+                return false
+            }
+        }
+        return true
     }
 }
 

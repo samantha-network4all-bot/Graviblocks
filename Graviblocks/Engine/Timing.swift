@@ -1,6 +1,8 @@
 import Foundation
 
 enum Timing {
+    static let sprintGravity = 60
+
     static func gravity(for level: Int) -> Int {
         switch level {
         case 1: return 60
