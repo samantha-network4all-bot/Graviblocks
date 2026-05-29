@@ -8,9 +8,9 @@ struct PRNG {
     }
 
     mutating func next() -> UInt64 {
-        state ^= state << 13
-        state ^= state >> 7
-        state ^= state << 17
+        state ^= state << 26
+        state ^= state >> 22
+        state ^= state << 11
         return state
     }
 
