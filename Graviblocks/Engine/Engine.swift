@@ -88,6 +88,12 @@ final class Engine {
             if isValid(cells: translated) {
                 state.active = ActivePiece(type: active.type, rotation: active.rotation, cells: translated)
             }
+        case .rotateCW, .rotateCCW:
+            let direction: Int = action == .rotateCW ? 1 : 3
+            if let rotated = rotatePiece(active, direction: direction) {
+                state.active = rotated
+                state.audioEvents.append("rotate")
+            }
         default:
             break
         }
@@ -152,6 +158,26 @@ final class Engine {
             }
         }
         return true
+    }
+
+    /// Attempt to rotate an active piece with SRS wall kicks.
+    private func rotatePiece(_ active: ActivePiece, direction: Int) -> ActivePiece? {
+        guard let pieceType = active.type.first else { return nil }
+        let from = active.rotation
+        let to = (from + direction + 4) % 4
+        guard let targetDefs = Tetromino.states[pieceType]?[to] else { return nil }
+        guard let currentDefs = Tetromino.states[pieceType]?[from], !currentDefs.isEmpty else { return nil }
+        // Compute the origin (where rotation-state-0 cell[0] is on the board).
+        let originX = active.cells[0][0] - currentDefs[0].0
+        let originY = active.cells[0][1] - currentDefs[0].1
+        let kicks = SRS.kicks(for: pieceType, from: from, to: to)
+        for (kdx, kdy) in kicks {
+            let candidate = targetDefs.map { (originX + $0.0 + kdx, originY + $0.1 - kdy) }
+            if isValid(cells: candidate.map { [$0.0, $0.1] }) {
+                return ActivePiece(type: active.type, rotation: to, cells: candidate.map { [$0.0, $0.1] })
+            }
+        }
+        return nil
     }
 
     /// Effective collision height for piece movement and spawn validation.
