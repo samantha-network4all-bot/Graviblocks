@@ -59,9 +59,9 @@ final class Engine {
             spawnX = -minCellX + 3
         }
 
-        // Position so lowest cell is at row 1 (in the hidden buffer).
-        let minCellY = Tetromino.minY(rotationCells)
-        let spawnY = 1 - minCellY // minCell y in state 0: I=1,O=0,T=0,S=0,Z=0,J=0,L=0
+        // Position so lowest cell is at row 1 (in hidden buffer).
+        let maxY = Tetromino.maxY(rotationCells)
+        let spawnY = 1 - maxY // minCell y in state 0: I=1,O=0,T=0,S=0,Z=0,J=0,L=0
 
         let cells = rotationCells.map { (x: $0.0 + spawnX, y: $0.1 + spawnY) }
 
