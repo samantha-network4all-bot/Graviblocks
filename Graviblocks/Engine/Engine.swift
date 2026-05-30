@@ -142,6 +142,70 @@ final class Engine {
         gravityCounter = 0
         state.lockTimer = 0
         state.lockResets = 0
+
+        let cleared = clearLines()
+        if state.mode == .sprint && state.lines >= 40 {
+            state.phase = .finished
+        }
+    }
+
+    /// Scan for full rows, remove them, shift down, update score/lines/level/combo.
+    /// Returns the number of rows cleared.
+    @discardableResult
+    private func clearLines() -> Int {
+        let totalRows = Metrics.visibleRows + Metrics.bufferRows
+        var fullRows: [Int] = []
+
+        // Identify full rows.
+        for y in 0..<totalRows {
+            var isFull = true
+            for x in 0..<Metrics.cols {
+                if state.board[x][y] == "." {
+                    isFull = false
+                    break
+                }
+            }
+            if isFull {
+                fullRows.append(y)
+            }
+        }
+
+        if fullRows.isEmpty {
+            state.combo = 0
+            return 0
+        }
+
+        // Remove full rows bottom-to-top by shifting rows above down.
+        let sorted = fullRows.sorted(by: >)
+        for row in sorted {
+            for y in row..<(totalRows - 1) {
+                for x in 0..<Metrics.cols {
+                    state.board[x][y] = state.board[x][y + 1]
+                }
+            }
+            // Fill topmost row with empty.
+            for x in 0..<Metrics.cols {
+                state.board[x][totalRows - 1] = "."
+            }
+        }
+
+        let cleared = fullRows.count
+        state.lines += cleared
+        state.combo += 1
+        let oldLevel = state.level
+        state.level = 1 + state.lines / 10
+        state.score += Scoring.cleared(cleared, level: state.level, combo: state.combo)
+
+        // Audio events.
+        state.audioEvents.append("lineClear")
+        if cleared == 4 {
+            state.audioEvents.append("tetris")
+        }
+        if state.level != oldLevel {
+            state.audioEvents.append("levelUp")
+        }
+
+        return cleared
     }
 
     private func isValid(cells: [[Int]]) -> Bool {
