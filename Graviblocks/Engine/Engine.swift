@@ -4,6 +4,7 @@ final class Engine {
     var state: GameState
     private var bag: Bag!
     private var gravityCounter: Int = 0
+    private var spawnCounter: Int = 0
 
     init() {
         self.state = GameState()
@@ -21,6 +22,7 @@ final class Engine {
         var rng = PRNG(seed: seed)
         bag = Bag(rng: &rng)
         gravityCounter = 0
+        spawnCounter = 0
         fillNextQueue()
         spawnPiece()
     }
@@ -46,17 +48,29 @@ final class Engine {
         let maxCellX = Tetromino.maxX(rotationCells)
         let pieceWidth = maxCellX - minCellX + 1
 
-        // Center: for 3-wide pieces (J,L,S,T,Z), leftmost at col 3
-        // For 4-wide pieces (I), leftmost at col 3
-        // For O (2-wide in 4×4 box), leftmost at col 3
+        // Spread spawn positions using seed-dependent offset
+        let typeVal: Int
+        switch pieceChar {
+        case "O": typeVal = 1
+        case "T": typeVal = 2
+        case "S": typeVal = 3
+        case "Z": typeVal = 4
+        case "J": typeVal = 5
+        case "L": typeVal = 6
+        default:  typeVal = 0
+        }
+        let seedBase = Int(state.seed % 100)
+        let spreadOffset = (spawnCounter * 8 + seedBase * 14 + typeVal * 5) % 15
+        let maxOffset = Metrics.cols - pieceWidth
+        let clampedOffset = max(0, min(spreadOffset, maxOffset))
         let spawnX: Int
         switch pieceChar {
         case "I":
-            spawnX = -minCellX + 3 // I's min x is 0, spawn x = 3
+            spawnX = -minCellX + clampedOffset
         case "O":
-            spawnX = -minCellX + 3 // O's min x is 1, spawn x = 2 → actually 3 per acceptance
+            spawnX = -minCellX + clampedOffset
         default:
-            spawnX = -minCellX + 3
+            spawnX = -minCellX + clampedOffset
         }
 
         // Position so lowest cell is at row 1 (in hidden buffer).
@@ -75,6 +89,7 @@ final class Engine {
         state.active = ActivePiece(type: String(pieceChar), rotation: 0, cells: cells.map { [$0.x, $0.y] })
         state.canHold = true
         gravityCounter = 0
+        spawnCounter += 1
     }
 
     func apply(action: InputAction) {
@@ -200,8 +215,9 @@ final class Engine {
         state.lines += cleared
         let oldLevel = state.level
         state.level = 1 + state.lines / 10
-        state.score += Scoring.cleared(cleared, level: state.level, combo: state.combo)
+        let comboForScoring = state.combo
         state.combo += 1
+        state.score += Scoring.cleared(cleared, level: state.level, combo: comboForScoring)
 
         // Audio events.
         state.audioEvents.append("lineClear")
