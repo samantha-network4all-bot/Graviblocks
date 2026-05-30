@@ -62,15 +62,7 @@ final class Engine {
         let spreadOffset = (spawnCounter * 8 + seedBase * 14 + typeVal * 5) % 15
         let maxOffset = Metrics.cols - pieceWidth
         let clampedOffset = max(0, min(spreadOffset, maxOffset))
-        let spawnX: Int
-        switch pieceChar {
-        case "I":
-            spawnX = -minCellX + clampedOffset
-        case "O":
-            spawnX = -minCellX + clampedOffset
-        default:
-            spawnX = -minCellX + clampedOffset
-        }
+        let spawnX = -minCellX + clampedOffset
 
         // Position so lowest cell is at row 1 (in hidden buffer).
         let maxY = Tetromino.maxY(rotationCells)
