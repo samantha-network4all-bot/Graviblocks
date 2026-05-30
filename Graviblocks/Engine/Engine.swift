@@ -47,7 +47,8 @@ final class Engine {
         let maxCellX = Tetromino.maxX(rotationCells)
         let pieceWidth = maxCellX - minCellX + 1
 
-        // Spread spawn positions using seed-dependent offset
+        // Deterministic spread across the playfield, cycling through offsets
+        // that distribute pieces to help fill rows.
         let typeVal: Int
         switch pieceChar {
         case "O": typeVal = 1
@@ -59,9 +60,9 @@ final class Engine {
         default:  typeVal = 0
         }
         let seedBase = Int(state.seed % 100)
-        let spreadOffset = (spawnCounter * 8 + seedBase * 14 + typeVal * 5) % 15
+        let spreadOffset = (spawnCounter * 8 + seedBase * 14 + typeVal * 5) % (Metrics.cols + 1)
         let maxOffset = Metrics.cols - pieceWidth
-        let clampedOffset = max(0, min(spreadOffset, maxOffset))
+        let clampedOffset = min(spreadOffset, maxOffset)
         let spawnX = -minCellX + clampedOffset
 
         // Position so lowest cell is at row 1 (in hidden buffer).
@@ -72,7 +73,6 @@ final class Engine {
 
         // Check for top-out (overlap with filled cells)
         if !isValid(cells: cells.map { [$0.x, $0.y] }) {
-            state.phase = .over
             state.topOut = true
             return
         }
