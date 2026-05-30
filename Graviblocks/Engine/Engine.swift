@@ -176,25 +176,32 @@ final class Engine {
         }
 
         // Remove full rows bottom-to-top by shifting rows above down.
-        let sorted = fullRows.sorted(by: >)
-        for row in sorted {
-            for y in row..<(totalRows - 1) {
+        // Build a set of full rows for quick lookup.
+        let fullSet = Set(fullRows)
+        var writeRow = totalRows - 1
+        // Read from bottom to top, skipping full rows.
+        for readRow in (0..<totalRows).reversed() {
+            if fullSet.contains(readRow) { continue }
+            if writeRow != readRow {
                 for x in 0..<Metrics.cols {
-                    state.board[x][y] = state.board[x][y + 1]
+                    state.board[x][writeRow] = state.board[x][readRow]
                 }
             }
-            // Fill topmost row with empty.
+            writeRow -= 1
+        }
+        // Fill remaining top rows with empty.
+        for y in 0...writeRow {
             for x in 0..<Metrics.cols {
-                state.board[x][totalRows - 1] = "."
+                state.board[x][y] = "."
             }
         }
 
         let cleared = fullRows.count
         state.lines += cleared
-        state.combo += 1
         let oldLevel = state.level
         state.level = 1 + state.lines / 10
         state.score += Scoring.cleared(cleared, level: state.level, combo: state.combo)
+        state.combo += 1
 
         // Audio events.
         state.audioEvents.append("lineClear")
@@ -245,9 +252,8 @@ final class Engine {
     }
 
     /// Effective collision height for piece movement and spawn validation.
-    /// The board allocates rows for the full visible area plus spawn buffer,
-    /// but pieces interact within a reduced height to match gravity timing.
-    private var effectiveHeight: Int { Metrics.visibleRows / 2 + Metrics.bufferRows }
+    /// Pieces may occupy any row in the board: visible rows + spawn buffer.
+    private var effectiveHeight: Int { Metrics.visibleRows + Metrics.bufferRows }
 }
 
 enum InputAction: String, Codable {
