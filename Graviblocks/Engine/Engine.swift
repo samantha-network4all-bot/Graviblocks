@@ -43,7 +43,6 @@ final class Engine {
 
         let rotationCells = Tetromino.spawnOrientation(pieceChar)
 
-        // Calculate spawn position: centered horizontally, lowest cells in buffer row 0 or 1.
         let minCellX = Tetromino.minX(rotationCells)
         let maxCellX = Tetromino.maxX(rotationCells)
         let pieceWidth = maxCellX - minCellX + 1
@@ -75,7 +74,7 @@ final class Engine {
 
         // Position so lowest cell is at row 1 (in hidden buffer).
         let maxY = Tetromino.maxY(rotationCells)
-        let spawnY = 1 - maxY // minCell y in state 0: I=1,O=0,T=0,S=0,Z=0,J=0,L=0
+        let spawnY = 1 - maxY
 
         let cells = rotationCells.map { (x: $0.0 + spawnX, y: $0.1 + spawnY) }
 
@@ -138,7 +137,9 @@ final class Engine {
                     state.active = ActivePiece(type: active.type, rotation: active.rotation, cells: translated)
                 } else {
                     lockPiece()
-                    spawnPiece()
+                    if state.phase == .playing {
+                        spawnPiece()
+                    }
                     continue
                 }
             }
@@ -190,11 +191,9 @@ final class Engine {
             return 0
         }
 
-        // Remove full rows bottom-to-top by shifting rows above down.
-        // Build a set of full rows for quick lookup.
+        // Remove full rows by compacting non-full rows downward.
         let fullSet = Set(fullRows)
         var writeRow = totalRows - 1
-        // Read from bottom to top, skipping full rows.
         for readRow in (0..<totalRows).reversed() {
             if fullSet.contains(readRow) { continue }
             if writeRow != readRow {
